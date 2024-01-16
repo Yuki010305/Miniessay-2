@@ -1,4 +1,3 @@
-
 ---
 title: "Mini-essay 2"
 author: "YANING JIN"
