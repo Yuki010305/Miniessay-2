@@ -1,0 +1,172 @@
+
+---
+title: "Mini-essay 2"
+author: "YANING JIN"
+format: pdf
+editor: visual
+---
+
+## Quarto
+
+Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+
+## Running Code
+
+When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+
+```{r}
+install.packages("janitor")
+library("janitor")
+install.packages("knitr")
+library("knitr")
+install.packages("lubridate")
+library("lubridate")
+install.packages("opendatatoronto")
+library("opendatatoronto")
+install.packages("tidyverse")
+library("tidyverse")
+```
+
+```{r}
+citation() # Get the citation information for R
+```
+
+```{r}
+citation("ggplot2") # Get citation information for a package
+```
+
+```{r}
+#### Simulate ####
+set.seed(853)
+
+simulated_occupancy_data <-
+  tibble(
+    date = rep(x = as.Date("2022-01-01") + c(0:364), times = 3),
+    # Based on Eddelbuettel: https://stackoverflow.com/a/21502386
+    shelter = c(
+      rep(x = "Shelter 1", times = 365),
+      rep(x = "Shelter 2", times = 365),
+      rep(x = "Shelter 3", times = 365)
+    ),
+    number_occupied =
+      rpois(
+        n = 365 * 3,
+        lambda = 30
+      ) # Draw 1,095 times from the Poisson distribution
+  )
+
+head(simulated_occupancy_data)
+```
+
+```{r}
+#### Acquire ####
+toronto_shelters <-
+  # Each package is associated with a unique id  found in the "For 
+  # Developers" tab of the relevant page from Open Data Toronto
+  # https://open.toronto.ca/dataset/daily-shelter-overnight-service-occupancy-capacity/
+  list_package_resources("21c83b32-d5a8-4106-a54f-010dbe49f6f2") |>
+  # Within that package, we are interested in the 2022 dataset
+  filter(name == 
+    "daily-shelter-overnight-service-occupancy-capacity-2022.csv") |>
+  # Having reduced the dataset to one row we can get the resource
+  get_resource()
+
+write_csv(
+  x = toronto_shelters,
+  file = "toronto_shelters.csv"
+)
+
+head(toronto_shelters)
+```
+
+```{r}
+toronto_shelters_clean <-
+  clean_names(toronto_shelters) |>
+  mutate(occupancy_date = ymd(occupancy_date)) |> 
+  select(occupancy_date, occupied_beds)
+
+head(toronto_shelters_clean)
+```
+
+```{r}
+write_csv(
+  x = toronto_shelters_clean,
+  file = "cleaned_toronto_shelters.csv"
+)
+```
+
+```{r}
+#### Explore ####
+toronto_shelters_clean <-
+  read_csv(
+    "cleaned_toronto_shelters.csv",
+    show_col_types = FALSE
+  )
+```
+
+```{r}
+toronto_shelters_clean |>
+  mutate(occupancy_month = month(
+    occupancy_date,
+    label = TRUE,
+    abbr = FALSE
+  )) |>
+  arrange(month(occupancy_date)) |> 
+  drop_na(occupied_beds) |> 
+  summarise(number_occupied = mean(occupied_beds),
+            .by = occupancy_month) |>
+  kable()
+```
+
+```{r}
+toronto_shelters_clean |>
+  mutate(occupancy_month = month(
+    occupancy_date,
+    label = TRUE,
+    abbr = FALSE
+  )) |>
+  arrange(month(occupancy_date)) |> 
+  drop_na(occupied_beds) |> 
+  summarise(number_occupied = mean(occupied_beds),
+            .by = occupancy_month) |>
+  kable()
+```
+
+```{r}
+toronto_shelters_clean |>
+  mutate(occupancy_month = month(
+    occupancy_date,
+    label = TRUE,
+    abbr = FALSE
+  )) |>
+  arrange(month(occupancy_date)) |> 
+  drop_na(occupied_beds) |>
+  summarise(number_occupied = mean(occupied_beds),
+            .by = occupancy_month) |>
+  kable(
+    col.names = c("Month", "Average daily number of occupied beds"),
+    digits = 1
+  )
+```
+
+```{r}
+library(ggplot2)
+
+ggplot(simulated_occupancy_data, aes(x = number_occupied, fill = shelter)) +
+  geom_histogram(binwidth = 5, position = "dodge", color = "white", alpha = 0.7) +
+  labs(title = "Distribution of Shelter Occupancy",
+       x = "Number of Occupied Beds",
+       y = "Frequency",
+       fill = "Shelter") +
+  theme_minimal()
+
+
+```
+
+Toronto has a significant homeless population, and in order to assist these individuals in leading better lives, there are numerous shelters and beds available for those in need. To better manage and upgrade these shelters, as well as to provide more effective assistance to those in need, we sought to understand the usage patterns of these shelters.
+
+We consulted relevant data provided by the Toronto municipal government regarding the usage of shelters in 2022, focusing on the nightly occupancy bed statistics at 4 AM. Utilizing the R programming language and associated packages such as tidyverse, janitor, opendatatoronto, lubridate, and knitr, we cleaned, organized, and analyzed the data. The result is a table displaying the average number of occupied beds in shelters each night for every month. We observed that the bed occupancy rate peaked at 38 in December, while it was lowest at 33 in January. Overall, bed occupancy rates showed relatively small fluctuations from January to November, with a noticeable increase from November to December.
+
+To enhance our data analysis, we also created a histogram. From the graphical representation, we noted that Shelter 2 had the highest occupancy frequency, while Shelter 1 exhibited the most stable occupancy frequency. The bed occupancy rate generally remained around 30.
+
+Through our analysis of shelter data, we discovered that the month and different geographical locations impact the number of occupied beds. Consequently, we can adjust bed quantities accordingly---increasing beds in December and maintaining around 33 beds from January to November. Specifically, Shelter 1 and Shelter 3 can be kept at approximately 30 beds each, while Shelter 2 can be maintained at around 35 beds. This strategic adjustment can help us effectively assist the homeless population, avoiding situations of insufficient or excess bed availability and providing better support to those in need.
